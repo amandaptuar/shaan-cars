@@ -10,6 +10,7 @@ import {
 } from 'recharts';
 import { supabase } from './supabaseClient';
 import { useNavigate } from 'react-router-dom';
+import { sendWelcomeEmail } from './utils/email';
 
 const PIE_COLORS = ['#4F46E5', '#0EA5E9', '#10B981', '#F59E0B', '#F43F5E'];
 
@@ -232,11 +233,69 @@ export default function Dashboard() {
   // Forms Logic
   const handleSaveMechanic = async (e) => {
     e.preventDefault();
+    
+    // Validate Duplicate Email
+    const { data: existingEmp } = await supabase.from('employees').select('id').eq('email', mechanicForm.email).maybeSingle();
+    const { data: existingMech } = await supabase.from('mechanics').select('id').eq('email', mechanicForm.email).maybeSingle();
+    if (existingEmp || existingMech) {
+      alert("Registration Failed: This email address is already registered in the system!");
+      return;
+    }
+
     const { error } = await supabase.from('mechanics').insert([{ full_name: mechanicForm.full_name, email: mechanicForm.email, assigned_password: mechanicForm.assigned_password || '123456', mobile: mechanicForm.mobile, specialization: mechanicForm.specialization, division: mechanicForm.division, photo_url: mechanicForm.photo_url || null }]);
-    if (error) { alert('Error: ' + error.message); return; }
+    if (error) { 
+      if (error.code === '23505' || error.message.toLowerCase().includes('duplicate')) {
+        alert("Registration Failed: This email address is already registered in the system!");
+      } else {
+        alert('Error: ' + error.message); 
+      }
+      return; 
+    }
+    
+    // Send Welcome Email
+    await sendWelcomeEmail(mechanicForm.email, mechanicForm.assigned_password || '123456', 'Mechanic');
+
     setIsMechanicModalOpen(false);
     setSuccessData({ title: 'Mechanic Created!', email: mechanicForm.email, password: mechanicForm.assigned_password || '123456', full_name: mechanicForm.full_name, type: 'emp' });
     setMechanicForm({ id: null, full_name: '', email: '', mobile: '', specialization: '', assigned_password: '', photo_url: '', division: 'Arena' });
+    fetchDashboardData();
+  };
+
+  const handleAddEmployee = async (e) => {
+    e.preventDefault();
+    
+    // Validate Duplicate Email
+    const { data: existingEmp } = await supabase.from('employees').select('id').eq('email', empForm.email).maybeSingle();
+    const { data: existingMech } = await supabase.from('mechanics').select('id').eq('email', empForm.email).maybeSingle();
+    if (existingEmp || existingMech) {
+      alert("Registration Failed: This email address is already registered in the system!");
+      return;
+    }
+
+    const { error } = await supabase.from('employees').insert([{ 
+      full_name: empForm.full_name, 
+      email: empForm.email, 
+      assigned_password: empForm.password || '123456', 
+      division: empForm.division, 
+      role: empForm.role,
+      photo_url: empForm.photo_url || null 
+    }]);
+    if (error) { 
+      if (error.code === '23505' || error.message.toLowerCase().includes('duplicate')) {
+        alert("Registration Failed: This email address is already registered in the system!");
+      } else {
+        alert('Error: ' + error.message); 
+      }
+      return; 
+    }
+
+    // Send Welcome Email
+    await sendWelcomeEmail(empForm.email, empForm.password || '123456', empForm.role);
+
+    setIsAddEmployeeOpen(false);
+    setSuccessData({ title: 'Employee Created!', email: empForm.email, password: empForm.password || '123456', full_name: empForm.full_name, type: 'emp' });
+    setEmpForm({ id: null, full_name: '', email: '', password: '', role: 'Employee', division: 'Arena', photo_url: '' });
+    fetchDashboardData();
   };
 
   const handleMechanicImageUpload = (e) => {

@@ -509,6 +509,7 @@ export default function MechanicDashboard() {
                     )}
                   </tbody>
                 </table>
+                </div>
               </div>
             </>
           )}
