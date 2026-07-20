@@ -70,6 +70,8 @@ export default function Dashboard() {
   const [isMechanicModalOpen, setIsMechanicModalOpen] = useState(false);
   const [isEditMechanicModalOpen, setIsEditMechanicModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSubmittingEmployee, setIsSubmittingEmployee] = useState(false);
+  const [isSubmittingMechanic, setIsSubmittingMechanic] = useState(false);
 
   useEffect(() => {
     fetchDashboardData();
@@ -233,12 +235,14 @@ export default function Dashboard() {
   // Forms Logic
   const handleSaveMechanic = async (e) => {
     e.preventDefault();
+    setIsSubmittingMechanic(true);
     
     // Validate Duplicate Email
     const { data: existingEmp } = await supabase.from('employees').select('id').eq('email', mechanicForm.email).maybeSingle();
     const { data: existingMech } = await supabase.from('mechanics').select('id').eq('email', mechanicForm.email).maybeSingle();
     if (existingEmp || existingMech) {
       alert("Registration Failed: This email address is already registered in the system!");
+      setIsSubmittingMechanic(false);
       return;
     }
 
@@ -249,6 +253,7 @@ export default function Dashboard() {
       } else {
         alert('Error: ' + error.message); 
       }
+      setIsSubmittingMechanic(false);
       return; 
     }
     
@@ -256,6 +261,7 @@ export default function Dashboard() {
     await sendWelcomeEmail(mechanicForm.email, mechanicForm.assigned_password || '123456', 'Mechanic');
 
     setIsMechanicModalOpen(false);
+    setIsSubmittingMechanic(false);
     setSuccessData({ title: 'Mechanic Created!', email: mechanicForm.email, password: mechanicForm.assigned_password || '123456', full_name: mechanicForm.full_name, type: 'emp' });
     setMechanicForm({ id: null, full_name: '', email: '', mobile: '', specialization: '', assigned_password: '', photo_url: '', division: 'Arena' });
     fetchDashboardData();
@@ -263,12 +269,14 @@ export default function Dashboard() {
 
   const handleAddEmployee = async (e) => {
     e.preventDefault();
+    setIsSubmittingEmployee(true);
     
     // Validate Duplicate Email
     const { data: existingEmp } = await supabase.from('employees').select('id').eq('email', empForm.email).maybeSingle();
     const { data: existingMech } = await supabase.from('mechanics').select('id').eq('email', empForm.email).maybeSingle();
     if (existingEmp || existingMech) {
       alert("Registration Failed: This email address is already registered in the system!");
+      setIsSubmittingEmployee(false);
       return;
     }
 
@@ -286,6 +294,7 @@ export default function Dashboard() {
       } else {
         alert('Error: ' + error.message); 
       }
+      setIsSubmittingEmployee(false);
       return; 
     }
 
@@ -293,6 +302,7 @@ export default function Dashboard() {
     await sendWelcomeEmail(empForm.email, empForm.password || '123456', empForm.role);
 
     setIsAddEmployeeOpen(false);
+    setIsSubmittingEmployee(false);
     setSuccessData({ title: 'Employee Created!', email: empForm.email, password: empForm.password || '123456', full_name: empForm.full_name, type: 'emp' });
     setEmpForm({ id: null, full_name: '', email: '', password: '', role: 'Employee', division: 'Arena', photo_url: '' });
     fetchDashboardData();
@@ -1827,7 +1837,7 @@ export default function Dashboard() {
               
               <div style={{ marginTop: '1rem', display: 'flex', gap: '1rem', paddingTop: '1.25rem', borderTop: '1px solid var(--border-color)' }}>
                  <button type="button" onClick={() => setIsAddEmployeeOpen(false)} className="btn" style={{ flex: 1, background: 'white', border: '1px solid var(--border-color)' }}>Cancel</button>
-                 <button type="submit" className="btn btn-primary" style={{ flex: 1, padding: '0.75rem' }}>Create Account</button>
+                 <button type="submit" disabled={isSubmittingEmployee} className={`btn btn-primary ${isSubmittingEmployee ? 'loading' : ''}`} style={{ flex: 1, padding: '0.75rem' }}>Create Account</button>
               </div>
             </form>
           </div>
@@ -2239,7 +2249,7 @@ export default function Dashboard() {
               </div>
               <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
                 <button type="button" className="btn" onClick={() => { setIsMechanicModalOpen(false); setIsEditMechanicModalOpen(false); }} style={{ flex: 1, background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)' }}>Cancel</button>
-                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>{isEditMechanicModalOpen ? 'Save Changes' : 'Add Mechanic'}</button>
+                <button type="submit" disabled={isSubmittingMechanic} className={`btn btn-primary ${isSubmittingMechanic ? 'loading' : ''}`} style={{ flex: 1 }}>{isEditMechanicModalOpen ? 'Save Changes' : 'Add Mechanic'}</button>
               </div>
             </form>
           </div>
