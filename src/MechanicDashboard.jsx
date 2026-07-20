@@ -482,7 +482,8 @@ export default function MechanicDashboard() {
                 <p style={{ color: 'var(--text-secondary)' }}>View all completed jobs and repairs.</p>
               </div>
               <div className="glass-card">
-                <table className="data-table">
+                <div className="table-container">
+                  <table className="data-table">
                   <thead>
                     <tr>
                       <th>Service Date</th>
@@ -566,7 +567,8 @@ export default function MechanicDashboard() {
                 <p style={{ color: 'var(--text-secondary)' }}>Compete, climb the ranks, and dominate your division.</p>
               </div>
               <div className="glass-card">
-                <table className="data-table">
+                <div className="table-container">
+                  <table className="data-table">
                   <thead>
                     <tr>
                       <th style={{ width: '80px', textAlign: 'center' }}>Rank</th>
@@ -593,6 +595,7 @@ export default function MechanicDashboard() {
                     ))}
                   </tbody>
                 </table>
+                </div>
               </div>
             </>
           )}

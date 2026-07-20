@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { 
   LayoutDashboard, CarFront, Search, Users, LogOut, UserPlus, 
   X, Copy, Check, PlusCircle, Trophy, Clock, DollarSign, 
-  TrendingUp, Edit, Box, BarChart3, Eye, Calendar, MapPin, Key, Download, Camera, CheckCircle, Wrench, Settings, Mail, Phone, UserCog, RefreshCw, Trash2
+  TrendingUp, Edit, Box, BarChart3, Eye, Calendar, MapPin, Key, Download, Camera, CheckCircle, Wrench, Settings, Mail, Phone, UserCog, RefreshCw, Trash2, Menu
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -68,6 +68,7 @@ export default function Dashboard() {
   const [mechanicForm, setMechanicForm] = useState({ id: null, full_name: '', email: '', mobile: '', specialization: '', assigned_password: '', photo_url: '' });
   const [isMechanicModalOpen, setIsMechanicModalOpen] = useState(false);
   const [isEditMechanicModalOpen, setIsEditMechanicModalOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     fetchDashboardData();
@@ -579,29 +580,30 @@ export default function Dashboard() {
 
   return (
     <div className="app-container">
+      <div className={`sidebar-overlay ${isMobileMenuOpen ? 'open' : ''}`} onClick={() => setIsMobileMenuOpen(false)}></div>
       {/* Sidebar - Tab Navigation */}
-      <aside className="sidebar">
+      <aside className={`sidebar ${isMobileMenuOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
           <div className="logo-icon"><CarFront size={24} /></div>
           <span className="logo-text">Super Admin</span>
         </div>
         <nav className="sidebar-nav">
-          <button onClick={() => handleTabChange('overview')} className={`nav-item ${activeTab === 'overview' ? 'active' : ''}`} style={{ width: '100%', textAlign: 'left' }}>
+          <button onClick={() => { handleTabChange('overview'); setIsMobileMenuOpen(false); }} className={`nav-item ${activeTab === 'overview' ? 'active' : ''}`} style={{ width: '100%', textAlign: 'left' }}>
             <LayoutDashboard size={20} /> Overview
           </button>
-          <button onClick={() => handleTabChange('employees')} className={`nav-item ${activeTab === 'employees' ? 'active' : ''}`} style={{ width: '100%', textAlign: 'left' }}>
+          <button onClick={() => { handleTabChange('employees'); setIsMobileMenuOpen(false); }} className={`nav-item ${activeTab === 'employees' ? 'active' : ''}`} style={{ width: '100%', textAlign: 'left' }}>
             <Users size={20} /> Staff Directory
           </button>
-          <button onClick={() => handleTabChange('inventory')} className={`nav-item ${activeTab === 'inventory' ? 'active' : ''}`} style={{ width: '100%', textAlign: 'left' }}>
+          <button onClick={() => { handleTabChange('inventory'); setIsMobileMenuOpen(false); }} className={`nav-item ${activeTab === 'inventory' ? 'active' : ''}`} style={{ width: '100%', textAlign: 'left' }}>
             <Box size={20} /> Inventory Master
           </button>
-          <button onClick={() => handleTabChange('sales')} className={`nav-item ${activeTab === 'sales' ? 'active' : ''}`} style={{ width: '100%', textAlign: 'left' }}>
+          <button onClick={() => { handleTabChange('sales'); setIsMobileMenuOpen(false); }} className={`nav-item ${activeTab === 'sales' ? 'active' : ''}`} style={{ width: '100%', textAlign: 'left' }}>
             <DollarSign size={20} /> Sales History
           </button>
-          <button onClick={() => handleTabChange('services')} className={`nav-item ${activeTab === 'services' ? 'active' : ''}`} style={{ width: '100%', textAlign: 'left' }}>
+          <button onClick={() => { handleTabChange('services'); setIsMobileMenuOpen(false); }} className={`nav-item ${activeTab === 'services' ? 'active' : ''}`} style={{ width: '100%', textAlign: 'left' }}>
             <Wrench size={20} /> Service Center
           </button>
-          <button onClick={() => handleTabChange('mechanics')} className={`nav-item ${activeTab === 'mechanics' ? 'active' : ''}`} style={{ width: '100%', textAlign: 'left' }}>
+          <button onClick={() => { handleTabChange('mechanics'); setIsMobileMenuOpen(false); }} className={`nav-item ${activeTab === 'mechanics' ? 'active' : ''}`} style={{ width: '100%', textAlign: 'left' }}>
             <UserCog size={20} /> Mechanics Team
           </button>
           
@@ -613,13 +615,19 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <main className="main-content" style={{ display: 'flex', flexDirection: 'column' }}>
-        <header className="top-header">
-          <div style={{ fontWeight: '600', fontSize: '1.25rem', color: 'var(--text-primary)' }}>
-            {activeTab === 'overview' && 'Company Overview Analytics'}
-            {activeTab === 'employees' && 'Staff Directory & Performance'}
-            {activeTab === 'inventory' && 'Central Inventory Control'}
-            {activeTab === 'sales' && 'Sales & Revenue Master'}
-            {activeTab === 'services' && 'Vehicle Services Master'}
+        <header className="top-header" style={{ paddingLeft: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <button className="mobile-menu-btn" onClick={() => setIsMobileMenuOpen(true)}>
+              <Menu size={24} />
+            </button>
+            <div style={{ fontWeight: '600', fontSize: '1.25rem', color: 'var(--text-primary)', display: 'none' }} className="desktop-title">
+              {activeTab === 'overview' && 'Company Overview Analytics'}
+              {activeTab === 'employees' && 'Staff Directory & Performance'}
+              {activeTab === 'inventory' && 'Central Inventory Control'}
+              {activeTab === 'sales' && 'Sales & Revenue Master'}
+              {activeTab === 'services' && 'Vehicle Services Master'}
+              {activeTab === 'mechanics' && 'Mechanics Team Management'}
+            </div>
           </div>
           <div className="header-actions">
             <button onClick={() => fetchDashboardData(true)} className="btn" style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Refresh Dashboard">
