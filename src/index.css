@@ -798,3 +798,16 @@ button {
   50% { opacity: 1; transform: scale(1); }
 }
 
+
+.login-card {
+  width: 100%;
+  max-width: 400px;
+  padding: 2.5rem;
+}
+@media (max-width: 768px) {
+  .login-card {
+    padding: 1.5rem;
+    margin: 1rem;
+  }
+}
+

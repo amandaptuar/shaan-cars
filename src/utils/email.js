@@ -17,6 +17,9 @@ export const sendWelcomeEmail = async (userEmail, userPassword, role) => {
   // These variables must match the {{variable_name}} in your EmailJS template!
   const templateParams = {
     email: userEmail,
+    to_email: userEmail,
+    userEmail: userEmail,       // Added to match the HTML template
+    userPassword: userPassword, // Added to match the HTML template
     name: 'Shaan Cars Enterprise',
     email_subject: 'Welcome to Shaan Cars CRM - Your Login Credentials',
     role_name: roleName,

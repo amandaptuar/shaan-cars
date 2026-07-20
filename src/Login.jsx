@@ -66,11 +66,11 @@ export default function Login() {
   };
 
   return (
-    <div className="app-container" style={{ justifyContent: 'center', alignItems: 'center' }}>
+    <div className="app-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', padding: '1rem' }}>
       <div className="bg-gradient-orb orb-1"></div>
       <div className="bg-gradient-orb orb-2"></div>
       
-      <div className="glass-card" style={{ width: '100%', maxWidth: '400px', padding: '2.5rem' }}>
+      <div className="glass-card login-card">
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '2rem' }}>
           <div className="logo-icon" style={{ width: '56px', height: '56px', marginBottom: '1rem' }}>
             <CarFront size={32} />
