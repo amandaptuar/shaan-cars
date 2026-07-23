@@ -11,6 +11,7 @@ import {
 import { supabase } from './supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import { sendWelcomeEmail } from './utils/email';
+import ShaanCarsLogo from './Logo';
 
 const PIE_COLORS = ['#4F46E5', '#0EA5E9', '#10B981', '#F59E0B', '#F43F5E'];
 
@@ -63,6 +64,12 @@ export default function Dashboard() {
   const [empDetails, setEmpDetails] = useState({ sales: [], attendance: [], totalHours: 0, salesTrend: [] });
   const [empFilterStartDate, setEmpFilterStartDate] = useState('');
   const [empFilterEndDate, setEmpFilterEndDate] = useState('');
+  
+  // Mechanic Details Fetching
+  const [selectedMechanic, setSelectedMechanic] = useState(null);
+  const [mechDetails, setMechDetails] = useState({ services: [], attendance: [], totalHours: 0, serviceTrend: [] });
+  const [mechFilterStartDate, setMechFilterStartDate] = useState('');
+  const [mechFilterEndDate, setMechFilterEndDate] = useState('');
   const [mechanicsList, setMechanicsList] = useState([]);
   const [serviceMechanicsList, setServiceMechanicsList] = useState([]);
   const [selectedMechanicIds, setSelectedMechanicIds] = useState([]);
@@ -576,7 +583,119 @@ export default function Dashboard() {
     a.href = url;
     a.download = `${selectedEmployee.full_name}_Attendance_Report.csv`;
     a.click();
+    URL.revokeObjectURL(url);
   };
+
+  // Mechanic Details Logic
+  const viewMechanicDetails = async (mech) => {
+    setSelectedMechanic(mech);
+    setMechFilterStartDate('');
+    setMechFilterEndDate('');
+    
+    // Fetch mechanic services
+    const { data: mServices } = await supabase.from('service_mechanics').select('*, vehicle_services(*)').eq('mechanic_id', mech.id);
+    
+    // Fetch mechanic attendance
+    const { data: mechAtt } = await supabase.from('attendance').select('*').eq('mechanic_id', mech.id).order('date', { ascending: false });
+    
+    let totalHrs = 0;
+    if (mechAtt) {
+      mechAtt.forEach(record => {
+        if (record.check_in && record.check_out) {
+          const diffMs = new Date(record.check_out) - new Date(record.check_in);
+          if (diffMs > 0) totalHrs += (diffMs / (1000 * 60 * 60));
+        }
+      });
+    }
+
+    // Process Service Trend for Mechanic Modal
+    const trend = {};
+    (mServices || []).forEach(sm => {
+       const date = new Date(sm.assigned_at || new Date()).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+       trend[date] = (trend[date] || 0) + 1;
+    });
+    const serviceTrendData = Object.keys(trend).map(date => ({ date, units: trend[date] })).reverse();
+
+    setMechDetails({ services: mServices || [], attendance: mechAtt || [], totalHours: totalHrs.toFixed(1), serviceTrend: serviceTrendData });
+  };
+
+  const downloadMechanicAttendanceCSV = () => {
+    if (!mechDetails || !mechDetails.attendance || mechDetails.attendance.length === 0) {
+      alert("No attendance records found for this mechanic.");
+      return;
+    }
+    
+    const csvData = mechDetails.attendance.map(a => {
+        let checkInTime = '--';
+        let checkOutTime = 'Active';
+        let hoursWorked = '--';
+        
+        if (a.check_in) {
+            checkInTime = new Date(a.check_in).toLocaleTimeString();
+        }
+        if (a.check_out) {
+            checkOutTime = new Date(a.check_out).toLocaleTimeString();
+            if (a.check_in) {
+                const diff = (new Date(a.check_out) - new Date(a.check_in)) / (1000 * 60 * 60);
+                hoursWorked = diff.toFixed(2);
+            }
+        }
+        
+        return {
+            Date: new Date(a.date).toLocaleDateString(),
+            Status: a.status,
+            'Check In': checkInTime,
+            'Check Out': checkOutTime,
+            'Hours Worked': hoursWorked
+        };
+    });
+    
+    const headers = ['Date', 'Status', 'Check In', 'Check Out', 'Hours Worked'];
+    const csvString = [
+      headers.join(','),
+      ...csvData.map(row => headers.map(fieldName => JSON.stringify(row[fieldName], (key, value) => value === null ? '' : value)).join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${selectedMechanic.full_name}_Attendance_Report.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportMechanicServicesToCSV = () => {
+    if (!mechDetails || !mechDetails.services || mechDetails.services.length === 0) {
+      alert("No service records found for this mechanic.");
+      return;
+    }
+    
+    const csvData = mechDetails.services.map(s => {
+        return {
+            'Assigned Date': new Date(s.assigned_at || new Date()).toLocaleDateString(),
+            'Vehicle Model': s.vehicle_services?.vehicle_model || 'Unknown',
+            'Service Status': s.vehicle_services?.status || 'Unknown',
+            'Notes': s.vehicle_services?.notes || ''
+        };
+    });
+    
+    const headers = ['Assigned Date', 'Vehicle Model', 'Service Status', 'Notes'];
+    const csvString = [
+      headers.join(','),
+      ...csvData.map(row => headers.map(fieldName => `"${String(row[fieldName]).replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${selectedMechanic.full_name}_Services_Report.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+
 
   const exportEmployeeSalesToCSV = () => {
     if (!empDetails || empDetails.sales.length === 0) return;
@@ -640,7 +759,25 @@ export default function Dashboard() {
   if (loading) {
     return (
       <div className="premium-loader-overlay">
-        <div className="premium-spinner"></div>
+        <div className="car-loader-container">
+          <div className="car-body-wrapper">
+            <svg className="car-svg" viewBox="0 0 100 40" width="80" height="32">
+              <path d="M10 25 C10 25 12 18 18 15 C24 12 35 12 40 8 C45 4 58 4 65 8 C72 12 78 18 84 20 C90 22 92 25 92 25 H85 C83 22 79 20 75 20 C71 20 67 22 65 25 H35 C33 22 29 20 25 20 C21 20 17 22 15 25 Z" fill="#dc2626" />
+              <path d="M41 9 C41 9 45 6 52 6 H61 C64 6 68 9 70 12 L73 17 H45 L41 9 Z" fill="#ffffff" opacity="0.6" />
+              <g className="car-wheel front-wheel">
+                <circle cx="25" cy="25" r="5" fill="#1e293b" stroke="#ffffff" strokeWidth="1.5" />
+                <line x1="25" y1="20" x2="25" y2="30" stroke="#ffffff" strokeWidth="1" />
+                <line x1="20" y1="25" x2="30" y2="25" stroke="#ffffff" strokeWidth="1" />
+              </g>
+              <g className="car-wheel rear-wheel">
+                <circle cx="75" cy="25" r="5" fill="#1e293b" stroke="#ffffff" strokeWidth="1.5" />
+                <line x1="75" y1="20" x2="75" y2="30" stroke="#ffffff" strokeWidth="1" />
+                <line x1="70" y1="25" x2="80" y2="25" stroke="#ffffff" strokeWidth="1" />
+              </g>
+            </svg>
+          </div>
+          <div className="car-road-line"></div>
+        </div>
         <div className="premium-loader-text">Loading Workspace</div>
         <div className="premium-loader-brand">SHAAN CARS CRM</div>
       </div>
@@ -653,7 +790,7 @@ export default function Dashboard() {
       {/* Sidebar - Tab Navigation */}
       <aside className={`sidebar ${isMobileMenuOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
-          <div className="logo-icon"><CarFront size={24} /></div>
+          <div className="logo-icon" style={{ background: 'transparent', padding: 0 }}><ShaanCarsLogo size={32} /></div>
           <span className="logo-text">Super Admin</span>
         </div>
         <nav className="sidebar-nav">
@@ -998,6 +1135,279 @@ export default function Dashboard() {
                             const d = new Date(a.date);
                             const start = empFilterStartDate ? new Date(empFilterStartDate) : new Date('2000-01-01');
                             const end = empFilterEndDate ? new Date(empFilterEndDate) : new Date('2100-01-01');
+                            end.setHours(23, 59, 59);
+                            return d >= start && d <= end;
+                          }).map(a => (
+                            <tr key={a.id}>
+                              <td>{new Date(a.date).toLocaleDateString()}</td>
+                              <td style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                 {a.check_in ? new Date(a.check_in).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--'} <br/> 
+                                 {a.check_out ? new Date(a.check_out).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Active'}
+                              </td>
+                              <td><span className={`status-badge ${a.status==='Present' ? 'won' : 'hot'}`} style={{ padding: '2px 6px', fontSize: '0.65rem' }}>{a.status}</span></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : selectedMechanic ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', paddingBottom: '2rem', animation: 'fadeIn 0.3s ease-out' }}>
+              {/* Header / Actions */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <button onClick={() => setSelectedMechanic(null)} className="btn" style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', padding: '6px 12px' }}><X size={16} /> Back to Directory</button>
+                    <h2 style={{ fontSize: '1.5rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}><Wrench size={24} color="var(--accent-primary)"/> Mechanic Intelligence</h2>
+                 </div>
+              </div>
+
+              {/* Profile Identity Card */}
+              <div className="glass-card" style={{ display: 'flex', alignItems: 'stretch', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-md)', padding: 0, overflow: 'hidden' }}>
+                <div style={{ padding: '2.5rem 3rem', display: 'flex', alignItems: 'center', gap: '2rem', flex: 1, borderRight: '1px solid var(--border-color)' }}>
+                  <div style={{ position: 'relative' }}>
+                    {selectedMechanic.photo_url ? (
+                      <img src={selectedMechanic.photo_url} alt="" style={{ width: '120px', height: '120px', borderRadius: '50%', objectFit: 'cover', border: '4px solid white', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)' }} />
+                    ) : (
+                      <div className="avatar" style={{width:'120px', height:'120px', fontSize:'3.5rem', border: '4px solid white', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)'}}>{selectedMechanic.full_name.charAt(0)}</div>
+                    )}
+                    <span style={{ position: 'absolute', bottom: 5, right: 5, width: 20, height: 20, background: 'var(--accent-success)', border: '3px solid white', borderRadius: '50%' }}></span>
+                  </div>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                      <h2 style={{ fontSize: '2rem', fontWeight: '800', color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.02em' }}>{selectedMechanic.full_name}</h2>
+                      <span className="status-badge won" style={{ padding: '4px 10px', fontSize: '0.75rem', fontWeight: '700' }}>Active Mechanic</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'white', padding: '6px 16px', borderRadius: '24px', fontSize: '0.875rem', fontWeight: '600', border: '1px solid var(--border-color)', color: 'var(--text-primary)', boxShadow: 'var(--shadow-sm)' }}><Wrench size={16} color="var(--accent-primary)"/> {selectedMechanic.specialization || 'General Mechanic'}</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--bg-tertiary)', color: 'var(--accent-warning)', padding: '6px 16px', borderRadius: '24px', fontSize: '0.875rem', fontWeight: '700', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-sm)' }}><Trophy size={16}/> {selectedMechanic.total_points} Reward Points</span>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Contact Info Sidebar */}
+                <div style={{ padding: '2.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '1.25rem', minWidth: '320px', background: 'var(--bg-tertiary)' }}>
+                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ padding: '10px', borderRadius: '12px', background: 'white', border: '1px solid var(--border-color)', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Mail size={18} /></div>
+                      <div>
+                        <div style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Email Address</div>
+                        <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{selectedMechanic.email}</div>
+                      </div>
+                   </div>
+                   {selectedMechanic.mobile && (
+                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ padding: '10px', borderRadius: '12px', background: 'white', border: '1px solid var(--border-color)', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Phone size={18} /></div>
+                      <div>
+                        <div style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Mobile Number</div>
+                        <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{selectedMechanic.mobile}</div>
+                      </div>
+                   </div>
+                   )}
+                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ padding: '10px', borderRadius: '12px', background: 'white', border: '1px solid var(--border-color)', color: 'var(--accent-danger)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Key size={18} /></div>
+                      <div>
+                        <div style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Login Password</div>
+                        <div style={{ fontWeight: '600', color: 'var(--accent-danger)' }}>{selectedMechanic.assigned_password}</div>
+                      </div>
+                   </div>
+                </div>
+              </div>
+
+              {/* KPIs Grid */}
+              {(() => {
+                const now = new Date();
+                const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
+                const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                
+                const services30Days = mechDetails.services.filter(s => new Date(s.assigned_at) >= thirtyDaysAgo).length;
+                const servicesToday = mechDetails.services.filter(s => new Date(s.assigned_at) >= todayStart).length;
+                
+                return (
+                  <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '0' }}>
+                    <div className="glass-card" style={{ background: 'white', border: 'none', borderLeft: '4px solid var(--accent-primary)', display: 'flex', alignItems: 'center', gap: '1rem', padding: '1.5rem' }}>
+                      <div style={{ background: 'var(--bg-tertiary)', padding: '1rem', borderRadius: '12px', color: 'var(--accent-primary)' }}><Wrench size={28}/></div>
+                      <div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Services</div>
+                          <div style={{ fontSize: '1.75rem', fontWeight: '700', color: 'var(--text-primary)' }}>{mechDetails.services.length}</div>
+                      </div>
+                    </div>
+                    <div className="glass-card" style={{ background: 'white', border: 'none', borderLeft: '4px solid var(--accent-warning)', display: 'flex', alignItems: 'center', gap: '1rem', padding: '1.5rem' }}>
+                      <div style={{ background: 'var(--bg-tertiary)', padding: '1rem', borderRadius: '12px', color: 'var(--accent-warning)' }}><Calendar size={28}/></div>
+                      <div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Last 30 Days</div>
+                          <div style={{ fontSize: '1.75rem', fontWeight: '700', color: 'var(--text-primary)' }}>{services30Days}</div>
+                      </div>
+                    </div>
+                    <div className="glass-card" style={{ background: 'white', border: 'none', borderLeft: '4px solid var(--accent-danger)', display: 'flex', alignItems: 'center', gap: '1rem', padding: '1.5rem' }}>
+                      <div style={{ background: 'var(--bg-tertiary)', padding: '1rem', borderRadius: '12px', color: 'var(--accent-danger)' }}><TrendingUp size={28}/></div>
+                      <div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Services Today</div>
+                          <div style={{ fontSize: '1.75rem', fontWeight: '700', color: 'var(--text-primary)' }}>{servicesToday}</div>
+                      </div>
+                    </div>
+                    <div className="glass-card" style={{ background: 'white', border: 'none', borderLeft: '4px solid var(--accent-secondary)', display: 'flex', alignItems: 'center', gap: '1rem', padding: '1.5rem' }}>
+                      <div style={{ background: 'var(--bg-tertiary)', padding: '1rem', borderRadius: '12px', color: 'var(--accent-secondary)' }}><Clock size={28}/></div>
+                      <div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Work Hours</div>
+                          <div style={{ fontSize: '1.75rem', fontWeight: '700', color: 'var(--text-primary)' }}>{mechDetails.totalHours}h</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Verified Identity & Profile Details */}
+              {selectedMechanic.profile_completed ? (
+                <div className="glass-card" style={{ background: 'white', border: 'none', padding: '2rem' }}>
+                  <h3 style={{ fontSize: '1.2rem', fontWeight: '800', marginBottom: '1.5rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
+                    <CheckCircle size={20} color="var(--accent-success)" /> Verified Identity & Profile Details
+                  </h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+                    <div>
+                      <div style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Date of Birth</div>
+                      <div style={{ fontWeight: '600', color: 'var(--text-primary)', marginTop: '4px' }}>{selectedMechanic.date_of_birth ? new Date(selectedMechanic.date_of_birth).toLocaleDateString('en-GB') : 'N/A'}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Aadhaar Number</div>
+                      <div style={{ fontWeight: '600', color: 'var(--text-primary)', marginTop: '4px' }}>{selectedMechanic.aadhaar_number || 'N/A'}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Emergency Contact 1</div>
+                      <div style={{ fontWeight: '600', color: 'var(--text-primary)', marginTop: '4px' }}>{selectedMechanic.family_contact_1 || 'N/A'}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Emergency Contact 2</div>
+                      <div style={{ fontWeight: '600', color: 'var(--text-primary)', marginTop: '4px' }}>{selectedMechanic.family_contact_2 || 'N/A'}</div>
+                    </div>
+                    <div style={{ gridColumn: 'span 2' }}>
+                      <div style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Residential Address</div>
+                      <div style={{ fontWeight: '600', color: 'var(--text-primary)', marginTop: '4px' }}>
+                        {selectedMechanic.address || 'N/A'}, {selectedMechanic.district || 'N/A'}, {selectedMechanic.state || 'N/A'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
+                    <div>
+                      <div style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '8px' }}>Aadhaar Card Document</div>
+                      {selectedMechanic.aadhaar_photo_url ? (
+                        <div style={{ border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden', background: 'var(--bg-primary)', display: 'flex', justifyContent: 'center', padding: '10px' }}>
+                          <img src={selectedMechanic.aadhaar_photo_url} alt="Aadhaar Document" style={{ width: '100%', maxHeight: '220px', objectFit: 'contain' }} />
+                        </div>
+                      ) : (
+                        <div style={{ padding: '2rem', border: '2px dashed var(--border-color)', borderRadius: '8px', textAlign: 'center', color: 'var(--text-muted)' }}>No image uploaded</div>
+                      )}
+                    </div>
+
+                    <div>
+                      <div style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '8px' }}>PAN Card Document</div>
+                      {selectedMechanic.pan_photo_url ? (
+                        <div style={{ border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden', background: 'var(--bg-primary)', display: 'flex', justifyContent: 'center', padding: '10px' }}>
+                          <img src={selectedMechanic.pan_photo_url} alt="PAN Document" style={{ width: '100%', maxHeight: '220px', objectFit: 'contain' }} />
+                        </div>
+                      ) : (
+                        <div style={{ padding: '2rem', border: '2px dashed var(--border-color)', borderRadius: '8px', textAlign: 'center', color: 'var(--text-muted)' }}>No image uploaded</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="glass-card" style={{ background: 'white', border: 'none', padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--accent-danger)' }}>
+                  <Lock size={18} />
+                  <span style={{ fontWeight: '600', fontSize: '0.875rem' }}>Pending Profile Setup: This mechanic has not completed their mandatory profile verification yet.</span>
+                </div>
+              )}
+
+              {/* Bottom Section: Graph + Tables */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                <div className="glass-card" style={{ background: 'white', border: 'none', display: 'flex', flexDirection: 'column' }}>
+                  <div className="chart-header" style={{ marginBottom: '1rem' }}><h3 className="chart-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><TrendingUp size={18} color="var(--accent-primary)"/> Service Workload Trend</h3></div>
+                  <div style={{ height: '320px', width: '100%', position: 'relative' }}>
+                    {mechDetails.serviceTrend.length === 0 ? <div style={{textAlign:'center', paddingTop:'3rem', color:'var(--text-muted)'}}>No service data.</div> : (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <LineChart data={mechDetails.serviceTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-color)" />
+                        <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-secondary)', fontSize: 12 }} dy={10} />
+                        <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--text-secondary)', fontSize: 12 }} allowDecimals={false} />
+                        <Tooltip cursor={{ stroke: 'var(--border-color)', strokeWidth: 1, strokeDasharray: '3 3' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: 'var(--shadow-md)' }} />
+                        <Line type="monotone" dataKey="units" stroke="var(--accent-primary)" strokeWidth={3} dot={{ fill: 'white', stroke: 'var(--accent-primary)', strokeWidth: 2, r: 4 }} activeDot={{ r: 6, strokeWidth: 0, fill: 'var(--accent-primary)' }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                    )}
+                  </div>
+                </div>
+
+                <div className="glass-card" style={{ padding: '1rem 1.5rem', background: 'white', border: 'none', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                  <span style={{ fontWeight: '600', fontSize: '0.875rem' }}>Filter Records:</span>
+                  <input type="date" value={mechFilterStartDate} onChange={e => setMechFilterStartDate(e.target.value)} className="form-input" style={{ width: '150px', padding: '0.4rem 0.5rem', fontSize: '0.8rem' }} />
+                  <span style={{ color: 'var(--text-muted)', fontWeight: '500' }}>to</span>
+                  <input type="date" value={mechFilterEndDate} onChange={e => setMechFilterEndDate(e.target.value)} className="form-input" style={{ width: '150px', padding: '0.4rem 0.5rem', fontSize: '0.8rem' }} />
+                  <button onClick={() => { setMechFilterStartDate(''); setMechFilterEndDate(''); }} className="btn" style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', fontSize: '0.75rem', padding: '0.4rem 0.8rem' }}>Clear Filter</button>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                  <div className="glass-card" style={{ padding: 0, background: 'white', border: 'none', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-color)', background: 'var(--bg-tertiary)', fontWeight: '600', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>Lifetime Services History</span>
+                      <button onClick={exportMechanicServicesToCSV} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', background: 'white', border: '1px solid var(--border-color)', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', color: 'var(--text-primary)', fontWeight: '600', boxShadow: 'var(--shadow-sm)' }}>
+                        <Download size={14} /> CSV
+                      </button>
+                    </div>
+                    <div style={{ flex: 1, overflowY: 'auto', maxHeight: '200px' }}>
+                      <table className="data-table" style={{ border: 'none' }}>
+                        <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}><tr><th>Date</th><th>Model</th><th>Status</th></tr></thead>
+                        <tbody>
+                          {mechDetails.services.filter(s => {
+                            if(!mechFilterStartDate && !mechFilterEndDate) return true;
+                            const d = new Date(s.assigned_at);
+                            const start = mechFilterStartDate ? new Date(mechFilterStartDate) : new Date('2000-01-01');
+                            const end = mechFilterEndDate ? new Date(mechFilterEndDate) : new Date('2100-01-01');
+                            end.setHours(23, 59, 59);
+                            return d >= start && d <= end;
+                          }).length === 0 ? <tr><td colSpan="3" style={{textAlign: 'center'}}>No services in this period.</td></tr> : mechDetails.services.filter(s => {
+                            if(!mechFilterStartDate && !mechFilterEndDate) return true;
+                            const d = new Date(s.assigned_at);
+                            const start = mechFilterStartDate ? new Date(mechFilterStartDate) : new Date('2000-01-01');
+                            const end = mechFilterEndDate ? new Date(mechFilterEndDate) : new Date('2100-01-01');
+                            end.setHours(23, 59, 59);
+                            return d >= start && d <= end;
+                          }).map(s => (
+                            <tr key={s.id}>
+                              <td>{new Date(s.assigned_at).toLocaleDateString()}</td>
+                              <td style={{ fontWeight: '500' }}>{s.vehicle_services?.vehicle_model}</td>
+                              <td style={{ fontWeight: '600' }}><span className="status-badge" style={{ padding: '2px 6px', fontSize: '0.65rem', background: 'var(--bg-tertiary)' }}>{s.vehicle_services?.status}</span></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div className="glass-card" style={{ flex: 1, padding: 0, background: 'white', border: 'none', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-color)', background: 'var(--bg-tertiary)', fontWeight: '600', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                       Lifetime Attendance Log
+                       <button onClick={downloadMechanicAttendanceCSV} className="btn" style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', background: 'white', border: '1px solid var(--border-color)' }}>
+                           <Download size={14} /> CSV
+                       </button>
+                    </div>
+                    <div style={{ flex: 1, overflowY: 'auto', maxHeight: '200px' }}>
+                      <table className="data-table" style={{ border: 'none' }}>
+                        <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}><tr><th>Date</th><th>Time Log</th><th>Status</th></tr></thead>
+                        <tbody>
+                          {mechDetails.attendance.filter(a => {
+                            if(!mechFilterStartDate && !mechFilterEndDate) return true;
+                            const d = new Date(a.date);
+                            const start = mechFilterStartDate ? new Date(mechFilterStartDate) : new Date('2000-01-01');
+                            const end = mechFilterEndDate ? new Date(mechFilterEndDate) : new Date('2100-01-01');
+                            end.setHours(23, 59, 59);
+                            return d >= start && d <= end;
+                          }).length === 0 ? <tr><td colSpan="3" style={{textAlign: 'center'}}>No records in this period.</td></tr> : mechDetails.attendance.filter(a => {
+                            if(!mechFilterStartDate && !mechFilterEndDate) return true;
+                            const d = new Date(a.date);
+                            const start = mechFilterStartDate ? new Date(mechFilterStartDate) : new Date('2000-01-01');
+                            const end = mechFilterEndDate ? new Date(mechFilterEndDate) : new Date('2100-01-01');
                             end.setHours(23, 59, 59);
                             return d >= start && d <= end;
                           }).map(a => (
@@ -1644,46 +2054,69 @@ export default function Dashboard() {
                   mechanicsList.map(mech => {
                     const assignedServices = serviceMechanicsList.filter(sm => sm.mechanic_id === mech.id && sm.vehicle_services?.status !== 'Completed');
                     return (
-                      <div key={mech.id} className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                      <div key={mech.id} className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '0', padding: '0', overflow: 'hidden' }}>
+                        
+                        {/* Card Header */}
+                        <div style={{ padding: '1.25rem 1.25rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <div style={{ display: 'flex', gap: '0.875rem', alignItems: 'center' }}>
                             {mech.photo_url ? (
-                              <img src={mech.photo_url} alt="" style={{ width:'48px', height:'48px', borderRadius:'50%', objectFit:'cover' }} />
+                              <img src={mech.photo_url} alt="" style={{ width:'52px', height:'52px', borderRadius:'50%', objectFit:'cover', border: '2px solid var(--border-color)', flexShrink: 0 }} />
                             ) : (
-                              <div className="avatar" style={{ width:'48px', height:'48px', fontSize:'1.2rem' }}>{mech.full_name.charAt(0)}</div>
+                              <div className="avatar" style={{ width:'52px', height:'52px', fontSize:'1.25rem', flexShrink: 0 }}>{mech.full_name.charAt(0)}</div>
                             )}
                             <div>
-                              <div style={{ fontWeight: '600', color: 'var(--text-primary)', fontSize: '1.1rem' }}>{mech.full_name}</div>
-                              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{mech.specialization || 'General Mechanic'}</div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '4px' }}>
-                                <button onClick={() => openEditMechanic(mech)} style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: '0.75rem', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}><Edit size={12}/> Edit Details</button>
-                                <button onClick={() => handleDeleteMechanic(mech.id, mech.full_name)} style={{ background: 'none', border: 'none', color: 'var(--accent-danger)', fontSize: '0.75rem', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}><Trash2 size={12}/> Remove</button>
+                              <div style={{ fontWeight: '700', color: 'var(--text-primary)', fontSize: '1rem', marginBottom: '2px' }}>{mech.full_name}</div>
+                              <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <Wrench size={11} color="var(--accent-primary)" />
+                                {mech.specialization || 'General Mechanic'}
+                              </div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--accent-warning)', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px', fontWeight: '600' }}>
+                                <Trophy size={11} /> {mech.total_points} pts
                               </div>
                             </div>
                           </div>
-                          <span className={`status-badge ${mech.status === 'Available' ? 'won' : mech.status === 'Booked' ? 'warm' : 'cold'}`}>
+                          <span className={`status-badge ${mech.status === 'Available' ? 'won' : mech.status === 'Booked' ? 'warm' : 'cold'}`} style={{ flexShrink: 0 }}>
                             {mech.status}
                           </span>
                         </div>
-                        <div style={{ background: 'var(--bg-tertiary)', padding: '0.75rem', borderRadius: '8px' }}>
-                          <div style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '8px', textTransform: 'uppercase' }}>Current Workload</div>
+
+                        {/* Contact Row */}
+                        <div style={{ padding: '0.5rem 1.25rem', borderTop: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)', display: 'flex', gap: '1.25rem', fontSize: '0.78rem', color: 'var(--text-secondary)', background: 'var(--bg-tertiary)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><Phone size={12} color="var(--text-muted)" /> {mech.mobile || 'N/A'}</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', overflow: 'hidden' }}><Mail size={12} color="var(--text-muted)" /> <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mech.email}</span></div>
+                        </div>
+
+                        {/* Workload */}
+                        <div style={{ padding: '0.875rem 1.25rem' }}>
+                          <div style={{ fontSize: '0.7rem', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Current Workload</div>
                           {assignedServices.length === 0 ? (
-                            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Not working on any car.</div>
+                            <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No active assignments.</div>
                           ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                               {assignedServices.map(sm => (
-                                <div key={sm.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', color: 'var(--text-primary)' }}>
-                                  <Wrench size={12} color="var(--accent-primary)" />
-                                  <span>{sm.vehicle_services?.vehicle_model} <span style={{ color: 'var(--accent-warning)', fontSize: '0.75rem' }}>({sm.vehicle_services?.status})</span></span>
+                                <div key={sm.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', color: 'var(--text-primary)', background: 'var(--bg-tertiary)', padding: '4px 8px', borderRadius: '6px' }}>
+                                  <Wrench size={11} color="var(--accent-primary)" />
+                                  <span style={{ fontWeight: '500' }}>{sm.vehicle_services?.vehicle_model}</span>
+                                  <span style={{ color: 'var(--accent-warning)', fontSize: '0.72rem', marginLeft: 'auto', fontWeight: '600' }}>{sm.vehicle_services?.status}</span>
                                 </div>
                               ))}
                             </div>
                           )}
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                           <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Phone size={14}/> {mech.mobile || 'N/A'}</div>
-                           <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Mail size={14}/> {mech.email}</div>
+
+                        {/* Action Buttons */}
+                        <div style={{ padding: '0.875rem 1.25rem', borderTop: '1px solid var(--border-color)', display: 'flex', gap: '0.5rem', background: 'var(--bg-primary)' }}>
+                          <button onClick={() => viewMechanicDetails(mech)} className="btn" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', fontSize: '0.78rem', fontWeight: '600', padding: '0.45rem 0.5rem', background: 'white', border: '1.5px solid var(--accent-primary)', color: 'var(--accent-primary)', borderRadius: '8px' }}>
+                            <Eye size={13} /> Dashboard
+                          </button>
+                          <button onClick={() => openEditMechanic(mech)} className="btn" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', fontSize: '0.78rem', fontWeight: '600', padding: '0.45rem 0.5rem', background: 'white', border: '1.5px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '8px' }}>
+                            <Edit size={13} /> Edit
+                          </button>
+                          <button onClick={() => handleDeleteMechanic(mech.id, mech.full_name)} className="btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', fontSize: '0.78rem', fontWeight: '600', padding: '0.45rem 0.6rem', background: 'white', border: '1.5px solid var(--accent-danger)', color: 'var(--accent-danger)', borderRadius: '8px' }}>
+                            <Trash2 size={13} />
+                          </button>
                         </div>
+
                       </div>
                     )
                   })

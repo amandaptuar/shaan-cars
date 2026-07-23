@@ -9,6 +9,7 @@ import {
 } from 'recharts';
 import { supabase } from './supabaseClient';
 import { useNavigate } from 'react-router-dom';
+import ShaanCarsLogo from './Logo';
 
 export default function EmployeeDashboard() {
   const navigate = useNavigate();
@@ -528,7 +529,25 @@ export default function EmployeeDashboard() {
   if (loading) {
     return (
       <div className="premium-loader-overlay">
-        <div className="premium-spinner"></div>
+        <div className="car-loader-container">
+          <div className="car-body-wrapper">
+            <svg className="car-svg" viewBox="0 0 100 40" width="80" height="32">
+              <path d="M10 25 C10 25 12 18 18 15 C24 12 35 12 40 8 C45 4 58 4 65 8 C72 12 78 18 84 20 C90 22 92 25 92 25 H85 C83 22 79 20 75 20 C71 20 67 22 65 25 H35 C33 22 29 20 25 20 C21 20 17 22 15 25 Z" fill="#dc2626" />
+              <path d="M41 9 C41 9 45 6 52 6 H61 C64 6 68 9 70 12 L73 17 H45 L41 9 Z" fill="#ffffff" opacity="0.6" />
+              <g className="car-wheel front-wheel">
+                <circle cx="25" cy="25" r="5" fill="#1e293b" stroke="#ffffff" strokeWidth="1.5" />
+                <line x1="25" y1="20" x2="25" y2="30" stroke="#ffffff" strokeWidth="1" />
+                <line x1="20" y1="25" x2="30" y2="25" stroke="#ffffff" strokeWidth="1" />
+              </g>
+              <g className="car-wheel rear-wheel">
+                <circle cx="75" cy="25" r="5" fill="#1e293b" stroke="#ffffff" strokeWidth="1.5" />
+                <line x1="75" y1="20" x2="75" y2="30" stroke="#ffffff" strokeWidth="1" />
+                <line x1="70" y1="25" x2="80" y2="25" stroke="#ffffff" strokeWidth="1" />
+              </g>
+            </svg>
+          </div>
+          <div className="car-road-line"></div>
+        </div>
         <div className="premium-loader-text">Loading Workspace</div>
         <div className="premium-loader-brand">SHAAN CARS CRM</div>
       </div>
@@ -713,7 +732,7 @@ export default function EmployeeDashboard() {
       <div className={`sidebar-overlay ${isMobileMenuOpen ? 'open' : ''}`} onClick={() => setIsMobileMenuOpen(false)}></div>
       <aside className={`sidebar ${isMobileMenuOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
-          <div className="logo-icon"><CarFront size={24} /></div>
+          <div className="logo-icon" style={{ background: 'transparent', padding: 0 }}><ShaanCarsLogo size={32} /></div>
           <span className="logo-text">RM Portal</span>
         </div>
         <nav className="sidebar-nav">

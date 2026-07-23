@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
-import { CarFront, Lock, Mail } from 'lucide-react';
+import { Lock, Mail, Eye, EyeOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
+import ShaanCarsLogo from './Logo';
+import showroomImg from './assets/login_showroom.png';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
@@ -67,48 +70,35 @@ export default function Login() {
 
   return (
     <div className="login-page-wrapper">
-      {/* Left side brand info (hidden on mobile) */}
-      <div className="login-left-brand">
+      {/* Left side brand info with showrooms image background */}
+      <div className="login-left-brand" style={{ backgroundImage: `url(${showroomImg})` }}>
+        <div className="login-left-overlay"></div>
+        
         <div className="login-left-header">
-          <div className="logo-circle">
-            <CarFront size={24} />
+          <div className="logo-container">
+            <ShaanCarsLogo size={32} />
           </div>
           <span>SHAAN CARS</span>
         </div>
 
-        <div className="login-left-content">
-          <h1>Precision Control.<br />Peak Performance.</h1>
-          <p>The ultimate enterprise CRM control center managing sales pipelines, employee performance, and inventory logistics across Arena, Nexa, and True Value divisions.</p>
-          
-          <div className="login-stats-grid">
-            <div className="login-stat-card">
-              <div className="num">3</div>
-              <div className="label">Divisions</div>
-            </div>
-            <div className="login-stat-card">
-              <div className="num">24/7</div>
-              <div className="label">Real-time Sync</div>
-            </div>
-            <div className="login-stat-card">
-              <div className="num">100%</div>
-              <div className="label">Security Lock</div>
-            </div>
-          </div>
-        </div>
 
-        <div style={{ zIndex: 2, fontSize: '0.8rem', color: '#475569', fontWeight: '500' }}>
+
+        <div style={{ zIndex: 2, fontSize: '0.8rem', color: '#cbd5e1', fontWeight: '500' }}>
           &copy; {new Date().getFullYear()} Shaan Cars Private Limited. All rights reserved.
         </div>
       </div>
 
       {/* Right side form */}
       <div className="login-right-form">
+        <div className="login-bg-blob-1"></div>
+        <div className="login-bg-blob-2"></div>
+        
         <div className="login-form-box">
           
           {/* Mobile Header Branding */}
           <div className="login-header-mobile">
-            <div className="logo-circle">
-              <CarFront size={28} />
+            <div className="logo-container">
+              <ShaanCarsLogo size={36} />
             </div>
             <h2>Shaan Cars CRM</h2>
             <p>Sign in to access your portal</p>
@@ -118,15 +108,15 @@ export default function Login() {
           <p className="login-form-subtitle">Enter your enterprise credentials to access the console.</p>
 
           {errorMsg && (
-            <div style={{ padding: '0.875rem 1rem', marginBottom: '1.5rem', background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', borderRadius: '12px', fontSize: '0.85rem', border: '1px solid rgba(239, 68, 68, 0.2)', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '500' }}>
-              <span style={{ color: '#ef4444', fontWeight: 'bold' }}>⚠️</span>
+            <div style={{ padding: '0.875rem 1rem', marginBottom: '1.5rem', background: '#fef2f2', color: '#991b1b', borderRadius: '12px', fontSize: '0.85rem', border: '1px solid #fecaca', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '500' }}>
+              <span style={{ color: '#dc2626', fontWeight: 'bold' }}>⚠️</span>
               {errorMsg}
             </div>
           )}
 
           <form onSubmit={handleLogin}>
             <div className="premium-input-group">
-              <label>Email Address / Username</label>
+              <label>Email Address</label>
               <div className="premium-input-wrapper">
                 <Mail size={18} />
                 <input 
@@ -142,23 +132,68 @@ export default function Login() {
 
             <div className="premium-input-group" style={{ marginBottom: '2rem' }}>
               <label>Security Password</label>
-              <div className="premium-input-wrapper">
+              <div className="premium-input-wrapper" style={{ position: 'relative' }}>
                 <Lock size={18} />
                 <input 
-                  type="password" 
+                  type={showPassword ? 'text' : 'password'} 
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="premium-login-input"
-                  placeholder="••••••••" 
+                  placeholder="••••••••"
+                  style={{ paddingRight: '44px' }}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(prev => !prev)}
+                  style={{
+                    position: 'absolute',
+                    right: '14px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: '#94a3b8',
+                    padding: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'color 0.2s'
+                  }}
+                  onMouseOver={e => e.currentTarget.style.color = '#2563EB'}
+                  onMouseOut={e => e.currentTarget.style.color = '#94a3b8'}
+                  title={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
             </div>
 
-            <button type="submit" disabled={loading} className="premium-submit-btn">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.8rem' }}>
+              <label className="custom-checkbox-container">
+                <input type="checkbox" />
+                <span className="checkmark"></span>
+                <span>Remember me</span>
+              </label>
+              <a href="#" onClick={(e) => { e.preventDefault(); alert("Please contact your Super Admin to reset your enterprise password."); }} style={{ fontSize: '0.85rem', color: '#dc2626', textDecoration: 'none', fontWeight: '600' }} onMouseOver={(e) => e.target.style.textDecoration = 'underline'} onMouseOut={(e) => e.target.style.textDecoration = 'none'}>
+                Forgot Password?
+              </a>
+            </div>
+
+            <button type="submit" disabled={loading} className="premium-submit-btn" style={{ marginBottom: '1.5rem' }}>
               {loading ? 'Authenticating Credentials...' : 'Sign In to Dashboard'}
             </button>
           </form>
+
+          <div style={{ marginTop: '2rem', paddingTop: '1.25rem', borderTop: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: '#94a3b8', fontSize: '0.8rem' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#10b981', fontWeight: '600' }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }}></span>
+              Secure Connection
+            </span>
+            <span>|</span>
+            <span>Enterprise SSL</span>
+          </div>
         </div>
       </div>
     </div>
