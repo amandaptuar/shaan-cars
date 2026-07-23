@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import {
   Users, CarFront, Search, Calendar, Award, CheckCircle,
-  Clock, LogOut, Edit3, Camera, Check, X, Tag, BarChart2, UploadCloud, Download, Trophy, Medal, Menu, Settings
+  Clock, LogOut, Edit3, Camera, Check, X, Tag, BarChart2, UploadCloud, Download, Trophy, Medal, Menu, Settings,
+  Lock, ShieldAlert, FileText, MapPin, Phone, Eye
 } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
@@ -42,7 +43,22 @@ export default function EmployeeDashboard() {
   // Modals
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
-  const [profileForm, setProfileForm] = useState({ photo_url: '', full_name: '', mobile: '', password: '' });
+  const [profileForm, setProfileForm] = useState({
+    photo_url: '',
+    full_name: '',
+    mobile: '',
+    password: '',
+    family_contact_1: '',
+    family_contact_2: '',
+    aadhaar_number: '',
+    aadhaar_photo_url: '',
+    pan_photo_url: '',
+    date_of_birth: '',
+    address: '',
+    state: '',
+    district: '',
+    profile_completed: false
+  });
 
   const [isSaleModalOpen, setIsSaleModalOpen] = useState(false);
   const [selectedCar, setSelectedCar] = useState(null);
@@ -66,14 +82,35 @@ export default function EmployeeDashboard() {
     const sessionData = localStorage.getItem('loggedInUser');
     if (!sessionData) { navigate('/login'); return; }
     const userData = JSON.parse(sessionData);
-    setProfile(userData);
-    setProfileForm({ photo_url: userData.photo_url || '', full_name: userData.full_name || '', mobile: userData.mobile || '', password: userData.assigned_password || '' });
 
     const employeeId = userData.id;
     const today = new Date().toISOString().split('T')[0];
 
     const { data: dbUser } = await supabase.from('employees').select('*').eq('id', employeeId).single();
-    if (dbUser) { setPoints(dbUser.total_points || 0); localStorage.setItem('loggedInUser', JSON.stringify(dbUser)); }
+    const activeUser = dbUser || userData;
+
+    setProfile(activeUser);
+    localStorage.setItem('loggedInUser', JSON.stringify(activeUser));
+    
+    if (activeUser) {
+      setPoints(activeUser.total_points || 0);
+      setProfileForm({
+        photo_url: activeUser.photo_url || '',
+        full_name: activeUser.full_name || '',
+        mobile: activeUser.mobile || '',
+        password: activeUser.assigned_password || '',
+        family_contact_1: activeUser.family_contact_1 || '',
+        family_contact_2: activeUser.family_contact_2 || '',
+        aadhaar_number: activeUser.aadhaar_number || '',
+        aadhaar_photo_url: activeUser.aadhaar_photo_url || '',
+        pan_photo_url: activeUser.pan_photo_url || '',
+        date_of_birth: activeUser.date_of_birth || '',
+        address: activeUser.address || '',
+        state: activeUser.state || '',
+        district: activeUser.district || '',
+        profile_completed: activeUser.profile_completed || false
+      });
+    }
 
     const { data: attData } = await supabase.from('attendance').select('*').eq('employee_id', employeeId).eq('date', today).single();
 
@@ -211,20 +248,73 @@ export default function EmployeeDashboard() {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => { setProfileForm({ ...profileForm, photo_url: reader.result }); };
+      reader.onloadend = () => { setProfileForm(prev => ({ ...prev, photo_url: reader.result })); };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleAadhaarUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => { setProfileForm(prev => ({ ...prev, aadhaar_photo_url: reader.result })); };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handlePanUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => { setProfileForm(prev => ({ ...prev, pan_photo_url: reader.result })); };
       reader.readAsDataURL(file);
     }
   };
 
   const handleProfileUpdate = async (e) => {
     e.preventDefault();
+    
+    if (profile?.profile_completed) {
+      alert('Action Denied: Your profile information is locked and cannot be edited.');
+      return;
+    }
+
+    // Required fields check
+    if (!profileForm.full_name || !profileForm.mobile || !profileForm.password ||
+        !profileForm.family_contact_1 || !profileForm.family_contact_2 ||
+        !profileForm.aadhaar_number || !profileForm.date_of_birth ||
+        !profileForm.address || !profileForm.state || !profileForm.district) {
+      alert('Please fill in all required profile details!');
+      return;
+    }
+
+    setLoading(true);
     const { data, error } = await supabase.from('employees').update({
-      full_name: profileForm.full_name, photo_url: profileForm.photo_url, mobile: profileForm.mobile, assigned_password: profileForm.password
+      full_name: profileForm.full_name,
+      photo_url: profileForm.photo_url,
+      mobile: profileForm.mobile,
+      assigned_password: profileForm.password,
+      family_contact_1: profileForm.family_contact_1,
+      family_contact_2: profileForm.family_contact_2,
+      aadhaar_number: profileForm.aadhaar_number,
+      aadhaar_photo_url: profileForm.aadhaar_photo_url,
+      pan_photo_url: profileForm.pan_photo_url,
+      date_of_birth: profileForm.date_of_birth,
+      address: profileForm.address,
+      state: profileForm.state,
+      district: profileForm.district,
+      profile_completed: true
     }).eq('id', profile.id).select().single();
-    if (!error && data) {
+
+    setLoading(false);
+
+    if (error) {
+      alert(`Error updating profile: ${error.message}`);
+    } else if (data) {
       localStorage.setItem('loggedInUser', JSON.stringify(data));
       setProfile(data);
       setIsProfileModalOpen(false);
+      alert('Profile details updated and locked successfully!');
     }
   };
 
@@ -445,6 +535,179 @@ export default function EmployeeDashboard() {
     );
   }
 
+  // If first time login and profile details are not completed
+  if (profile && !profile.profile_completed) {
+    return (
+      <div className="profile-setup-container">
+        <div className="profile-setup-card">
+          <div className="profile-setup-header">
+            <h1>Access Blocked: Profile Verification Required</h1>
+            <p>Please enter all required details below to verify your profile and unlock dashboard access.</p>
+          </div>
+          <div className="profile-setup-body">
+            <div className="warning-box" style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b' }}>
+              <ShieldAlert size={20} style={{ flexShrink: 0, color: '#dc2626' }} />
+              <div>
+                <strong>Dashboard Access Blocked:</strong> As a mandatory security measure, you must complete your profile (emergency contacts, Aadhaar, PAN card, date of birth, and address) before you can access any sales records, mark attendance, or view CRM stats.
+                <br />
+                <span style={{ fontWeight: '700', color: '#b91c1c' }}>⚠️ IMPORTANT: Once you save and lock this profile, these details cannot be changed. Please double-check all information before submitting.</span>
+              </div>
+            </div>
+
+            <form onSubmit={handleProfileUpdate}>
+              {/* Profile Photo */}
+              <div className="setup-section-title">
+                <Camera size={18} /> Profile Photo
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
+                <div style={{ position: 'relative', display: 'inline-block' }}>
+                  {profileForm.photo_url ? (
+                    <img src={profileForm.photo_url} alt="Preview" style={{ width: '120px', height: '120px', borderRadius: '50%', objectFit: 'cover', border: '4px solid var(--border-color)', boxShadow: 'var(--shadow-md)' }} />
+                  ) : (
+                    <div style={{ width: '120px', height: '120px', borderRadius: '50%', background: 'var(--bg-tertiary)', border: '4px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Camera size={36} color="var(--text-muted)" />
+                    </div>
+                  )}
+                </div>
+                <label className="btn" style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', cursor: 'pointer' }}>
+                  <UploadCloud size={16} /> Upload Profile Photo
+                  <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} />
+                </label>
+              </div>
+
+              {/* Personal Details */}
+              <div className="setup-section-title">
+                <Users size={18} /> Personal Details
+              </div>
+              <div className="setup-form-grid">
+                <div>
+                  <label className="form-label">Full Name *</label>
+                  <input required type="text" value={profileForm.full_name} onChange={e => setProfileForm({ ...profileForm, full_name: e.target.value })} className="form-input" placeholder="Enter Full Name" />
+                </div>
+                <div>
+                  <label className="form-label">Mobile Number *</label>
+                  <input required type="text" value={profileForm.mobile} onChange={e => setProfileForm({ ...profileForm, mobile: e.target.value })} className="form-input" placeholder="Enter Mobile Number" />
+                </div>
+                <div>
+                  <label className="form-label">Account Password *</label>
+                  <input required type="text" value={profileForm.password} onChange={e => setProfileForm({ ...profileForm, password: e.target.value })} className="form-input" placeholder="Choose Password" />
+                </div>
+                <div>
+                  <label className="form-label">Date of Birth *</label>
+                  <input required type="date" value={profileForm.date_of_birth} onChange={e => setProfileForm({ ...profileForm, date_of_birth: e.target.value })} className="form-input" />
+                </div>
+              </div>
+
+              {/* Family Contacts */}
+              <div className="setup-section-title">
+                <Phone size={18} /> Emergency Family Contacts (2 required)
+              </div>
+              <div className="setup-form-grid">
+                <div>
+                  <label className="form-label">Family Member Contact 1 *</label>
+                  <input required type="text" value={profileForm.family_contact_1} onChange={e => setProfileForm({ ...profileForm, family_contact_1: e.target.value })} className="form-input" placeholder="e.g. Father's / Spouse's Phone" />
+                </div>
+                <div>
+                  <label className="form-label">Family Member Contact 2 *</label>
+                  <input required type="text" value={profileForm.family_contact_2} onChange={e => setProfileForm({ ...profileForm, family_contact_2: e.target.value })} className="form-input" placeholder="e.g. Mother's / Sibling's Phone" />
+                </div>
+              </div>
+
+              {/* Address Details */}
+              <div className="setup-section-title">
+                <MapPin size={18} /> Residential Address
+              </div>
+              <div className="setup-form-grid">
+                <div className="form-group-full">
+                  <label className="form-label">Full Address *</label>
+                  <textarea required value={profileForm.address} onChange={e => setProfileForm({ ...profileForm, address: e.target.value })} className="form-input" style={{ minHeight: '80px', resize: 'vertical' }} placeholder="House/Flat No., Street, Area, Town"></textarea>
+                </div>
+                <div>
+                  <label className="form-label">District *</label>
+                  <input required type="text" value={profileForm.district} onChange={e => setProfileForm({ ...profileForm, district: e.target.value })} className="form-input" placeholder="Enter District" />
+                </div>
+                <div>
+                  <label className="form-label">State *</label>
+                  <input required type="text" value={profileForm.state} onChange={e => setProfileForm({ ...profileForm, state: e.target.value })} className="form-input" placeholder="Enter State" />
+                </div>
+              </div>
+
+              {/* Identity Proofs */}
+              <div className="setup-section-title">
+                <FileText size={18} /> Government Identity Verification
+              </div>
+              <div className="setup-form-grid" style={{ marginBottom: '1rem' }}>
+                <div className="form-group-full">
+                  <label className="form-label">Aadhaar Card Number *</label>
+                  <input required type="text" maxLength={12} value={profileForm.aadhaar_number} onChange={e => setProfileForm({ ...profileForm, aadhaar_number: e.target.value.replace(/\D/g, '') })} className="form-input" placeholder="12-digit Aadhaar Number" />
+                </div>
+              </div>
+
+              <div className="doc-upload-grid">
+                <div>
+                  <label className="form-label">Aadhaar Card Photo *</label>
+                  <div className="premium-upload-card">
+                    {profileForm.aadhaar_photo_url ? (
+                      <>
+                        <div className="preview-thumbnail-container">
+                          <img src={profileForm.aadhaar_photo_url} className="preview-thumbnail" alt="Aadhaar Preview" />
+                        </div>
+                        <label className="btn" style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', fontSize: '0.8rem', padding: '0.4rem 0.8rem', cursor: 'pointer' }}>
+                          Replace Photo
+                          <input type="file" accept="image/*" onChange={handleAadhaarUpload} style={{ display: 'none' }} />
+                        </label>
+                      </>
+                    ) : (
+                      <>
+                        <div className="upload-icon-circle"><UploadCloud size={24} /></div>
+                        <span style={{ fontSize: '0.85rem', fontWeight: '500', display: 'block', marginBottom: '4px' }}>Click to Upload Aadhaar</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>JPEG, PNG up to 5MB</span>
+                        <input required type="file" accept="image/*" onChange={handleAadhaarUpload} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }} />
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="form-label">PAN Card Photo *</label>
+                  <div className="premium-upload-card">
+                    {profileForm.pan_photo_url ? (
+                      <>
+                        <div className="preview-thumbnail-container">
+                          <img src={profileForm.pan_photo_url} className="preview-thumbnail" alt="PAN Preview" />
+                        </div>
+                        <label className="btn" style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', fontSize: '0.8rem', padding: '0.4rem 0.8rem', cursor: 'pointer' }}>
+                          Replace Photo
+                          <input type="file" accept="image/*" onChange={handlePanUpload} style={{ display: 'none' }} />
+                        </label>
+                      </>
+                    ) : (
+                      <>
+                        <div className="upload-icon-circle"><UploadCloud size={24} /></div>
+                        <span style={{ fontSize: '0.85rem', fontWeight: '500', display: 'block', marginBottom: '4px' }}>Click to Upload PAN Card</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>JPEG, PNG up to 5MB</span>
+                        <input required type="file" accept="image/*" onChange={handlePanUpload} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }} />
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '3rem' }}>
+                <button type="button" onClick={handleLogout} className="btn" style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', flex: 1, padding: '0.75rem' }}>
+                  Cancel & Log Out
+                </button>
+                <button type="submit" className="btn btn-primary" style={{ flex: 2, padding: '0.75rem' }}>
+                  Save and Lock Profile & Unlock Dashboard
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="app-container">
       <div className={`sidebar-overlay ${isMobileMenuOpen ? 'open' : ''}`} onClick={() => setIsMobileMenuOpen(false)}></div>
@@ -500,10 +763,15 @@ export default function EmployeeDashboard() {
                   </div>
                   <button onClick={() => {
                     setIsProfileMenuOpen(false);
-                    if (isCheckedIn) setIsProfileModalOpen(true);
-                    else alert('Action Denied: You must mark your attendance (Go Active) before making any changes.');
+                    if (profile?.profile_completed) {
+                      setIsProfileModalOpen(true);
+                    } else if (isCheckedIn) {
+                      setIsProfileModalOpen(true);
+                    } else {
+                      alert('Action Denied: You must mark your attendance (Go Active) before making any changes.');
+                    }
                   }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem', borderRadius: '8px', color: 'var(--text-secondary)', background: 'transparent', textAlign: 'left', cursor: 'pointer', transition: '0.2s', border: 'none' }} onMouseOver={(e) => e.currentTarget.style.background = 'var(--bg-tertiary)'} onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}>
-                    <Settings size={16} /> Edit Profile
+                    <Settings size={16} /> {profile?.profile_completed ? 'View Verification Details' : 'Setup Profile'}
                   </button>
                   <button onClick={handleLogout} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem', borderRadius: '8px', color: 'var(--accent-danger)', background: 'transparent', textAlign: 'left', cursor: 'pointer', transition: '0.2s', border: 'none' }} onMouseOver={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'} onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}>
                     <LogOut size={16} /> Logout
@@ -841,15 +1109,35 @@ export default function EmployeeDashboard() {
       {/* Edit Profile Modal (WITH FILE UPLOAD) */}
       {isProfileModalOpen && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ padding: 0, overflow: 'hidden' }}>
-            <div style={{ height: '100px', background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))', position: 'relative' }}>
+          <div className="modal-content" style={{ padding: 0, overflow: 'hidden', maxWidth: '650px', width: '90%' }}>
+            <div style={{ height: '100px', background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <button onClick={() => setIsProfileModalOpen(false)} style={{ position: 'absolute', top: '16px', right: '16px', color: 'white', background: 'rgba(255,255,255,0.2)', padding: '4px', borderRadius: '50%' }}><X size={20} /></button>
+              <h2 style={{ color: 'white', fontSize: '1.25rem', fontWeight: 'bold' }}>Employee Profile & Verification Details</h2>
             </div>
 
-            <div style={{ padding: '0 2rem 2rem 2rem', marginTop: '-50px' }}>
-              <form onSubmit={handleProfileUpdate} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ padding: '2rem', maxHeight: '70vh', overflowY: 'auto' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <span style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Status:</span>
+                {profile?.profile_completed ? (
+                  <span className="success-badge-completed">
+                    <CheckCircle size={14} /> Profile Locked & Verified
+                  </span>
+                ) : (
+                  <span className="locked-badge">
+                    <Lock size={14} /> Profile Pending Setup
+                  </span>
+                )}
+              </div>
 
-                <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
+              {profile?.profile_completed && (
+                <div style={{ display: 'flex', gap: '8px', background: 'rgba(239, 68, 68, 0.04)', border: '1px solid rgba(239, 68, 68, 0.1)', color: 'var(--accent-danger)', padding: '0.75rem', borderRadius: '8px', fontSize: '0.85rem', marginBottom: '1.5rem', alignItems: 'center' }}>
+                  <Lock size={16} style={{ flexShrink: 0 }} />
+                  <span>These details have been locked and cannot be edited. Please contact your manager or Super Admin for any modifications.</span>
+                </div>
+              )}
+
+              <form onSubmit={handleProfileUpdate} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
                   <div style={{ position: 'relative', display: 'inline-block' }}>
                     {profileForm.photo_url ? (
                       <img src={profileForm.photo_url} alt="Preview" style={{ width: '100px', height: '100px', borderRadius: '50%', objectFit: 'cover', border: '4px solid var(--bg-secondary)', boxShadow: 'var(--shadow-md)' }} />
@@ -857,18 +1145,114 @@ export default function EmployeeDashboard() {
                       <div style={{ width: '100px', height: '100px', borderRadius: '50%', background: 'var(--bg-tertiary)', border: '4px solid var(--bg-secondary)', boxShadow: 'var(--shadow-md)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' }}><Camera size={32} color="var(--text-muted)" /></div>
                     )}
                   </div>
-                  <div style={{ marginTop: '1rem' }}>
-                    <label className="btn" style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', cursor: 'pointer' }}>
-                      <UploadCloud size={16} /> Upload New Photo
-                      <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} />
-                    </label>
+                  {!profile?.profile_completed && (
+                    <div style={{ marginTop: '0.75rem' }}>
+                      <label className="btn" style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', cursor: 'pointer', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>
+                        <UploadCloud size={14} /> Upload New Photo
+                        <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} />
+                      </label>
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div>
+                    <label className="form-label">Full Name</label>
+                    <input required disabled={profile?.profile_completed} type="text" value={profileForm.full_name} onChange={e => setProfileForm({ ...profileForm, full_name: e.target.value })} className="form-input" />
+                  </div>
+                  <div>
+                    <label className="form-label">Mobile Number</label>
+                    <input required disabled={profile?.profile_completed} type="text" value={profileForm.mobile} onChange={e => setProfileForm({ ...profileForm, mobile: e.target.value })} className="form-input" />
+                  </div>
+                  <div>
+                    <label className="form-label">Account Password</label>
+                    <input required disabled={profile?.profile_completed} type="text" value={profileForm.password} onChange={e => setProfileForm({ ...profileForm, password: e.target.value })} className="form-input" />
+                  </div>
+                  <div>
+                    <label className="form-label">Date of Birth</label>
+                    <input required disabled={profile?.profile_completed} type="date" value={profileForm.date_of_birth} onChange={e => setProfileForm({ ...profileForm, date_of_birth: e.target.value })} className="form-input" />
                   </div>
                 </div>
 
-                <div><label className="form-label">Full Name</label><input required type="text" value={profileForm.full_name} onChange={e => setProfileForm({ ...profileForm, full_name: e.target.value })} className="form-input" /></div>
-                <div><label className="form-label">Mobile Number</label><input type="text" value={profileForm.mobile} onChange={e => setProfileForm({ ...profileForm, mobile: e.target.value })} className="form-input" /></div>
-                <div><label className="form-label">Account Password</label><input required type="text" value={profileForm.password} onChange={e => setProfileForm({ ...profileForm, password: e.target.value })} className="form-input" /></div>
-                <button type="submit" className="btn btn-primary" style={{ marginTop: '1rem', width: '100%', padding: '0.75rem' }}>Save Profile</button>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div>
+                    <label className="form-label">Family Contact 1</label>
+                    <input required disabled={profile?.profile_completed} type="text" value={profileForm.family_contact_1} onChange={e => setProfileForm({ ...profileForm, family_contact_1: e.target.value })} className="form-input" />
+                  </div>
+                  <div>
+                    <label className="form-label">Family Contact 2</label>
+                    <input required disabled={profile?.profile_completed} type="text" value={profileForm.family_contact_2} onChange={e => setProfileForm({ ...profileForm, family_contact_2: e.target.value })} className="form-input" />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="form-label">Full Address</label>
+                  <textarea required disabled={profile?.profile_completed} value={profileForm.address} onChange={e => setProfileForm({ ...profileForm, address: e.target.value })} className="form-input" style={{ minHeight: '60px', resize: 'vertical' }}></textarea>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div>
+                    <label className="form-label">District</label>
+                    <input required disabled={profile?.profile_completed} type="text" value={profileForm.district} onChange={e => setProfileForm({ ...profileForm, district: e.target.value })} className="form-input" />
+                  </div>
+                  <div>
+                    <label className="form-label">State</label>
+                    <input required disabled={profile?.profile_completed} type="text" value={profileForm.state} onChange={e => setProfileForm({ ...profileForm, state: e.target.value })} className="form-input" />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="form-label">Aadhaar Card Number</label>
+                  <input required disabled={profile?.profile_completed} type="text" maxLength={12} value={profileForm.aadhaar_number} onChange={e => setProfileForm({ ...profileForm, aadhaar_number: e.target.value.replace(/\D/g, '') })} className="form-input" />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '0.5rem' }}>
+                  <div>
+                    <label className="form-label">Aadhaar Card Image</label>
+                    {profileForm.aadhaar_photo_url ? (
+                      <div style={{ position: 'relative' }}>
+                        <img src={profileForm.aadhaar_photo_url} alt="Aadhaar" style={{ width: '100%', height: '110px', objectFit: 'cover', borderRadius: '6px', border: '1px solid var(--border-color)' }} />
+                        {!profile?.profile_completed && (
+                          <label className="btn" style={{ position: 'absolute', bottom: '5px', right: '5px', background: 'rgba(0,0,0,0.6)', color: 'white', border: 'none', padding: '2px 8px', fontSize: '0.75rem', cursor: 'pointer' }}>
+                            Edit
+                            <input type="file" accept="image/*" onChange={handleAadhaarUpload} style={{ display: 'none' }} />
+                          </label>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="premium-upload-card" style={{ minHeight: '110px', padding: '0.5rem' }}>
+                        <UploadCloud size={20} />
+                        <span style={{ fontSize: '0.75rem' }}>Upload Aadhaar</span>
+                        <input required type="file" accept="image/*" onChange={handleAadhaarUpload} style={{ position: 'absolute', inset: 0, opacity: 0 }} />
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="form-label">PAN Card Image</label>
+                    {profileForm.pan_photo_url ? (
+                      <div style={{ position: 'relative' }}>
+                        <img src={profileForm.pan_photo_url} alt="PAN" style={{ width: '100%', height: '110px', objectFit: 'cover', borderRadius: '6px', border: '1px solid var(--border-color)' }} />
+                        {!profile?.profile_completed && (
+                          <label className="btn" style={{ position: 'absolute', bottom: '5px', right: '5px', background: 'rgba(0,0,0,0.6)', color: 'white', border: 'none', padding: '2px 8px', fontSize: '0.75rem', cursor: 'pointer' }}>
+                            Edit
+                            <input type="file" accept="image/*" onChange={handlePanUpload} style={{ display: 'none' }} />
+                          </label>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="premium-upload-card" style={{ minHeight: '110px', padding: '0.5rem' }}>
+                        <UploadCloud size={20} />
+                        <span style={{ fontSize: '0.75rem' }}>Upload PAN</span>
+                        <input required type="file" accept="image/*" onChange={handlePanUpload} style={{ position: 'absolute', inset: 0, opacity: 0 }} />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {!profile?.profile_completed && (
+                  <button type="submit" className="btn btn-primary" style={{ marginTop: '1rem', width: '100%', padding: '0.75rem' }}>Save & Lock Profile</button>
+                )}
               </form>
             </div>
           </div>

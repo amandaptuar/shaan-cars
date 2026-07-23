@@ -66,76 +66,100 @@ export default function Login() {
   };
 
   return (
-    <div className="app-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', padding: '1rem' }}>
-      <div className="bg-gradient-orb orb-1"></div>
-      <div className="bg-gradient-orb orb-2"></div>
-      
-      <div className="glass-card login-card">
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '2rem' }}>
-          <div className="logo-icon" style={{ width: '56px', height: '56px', marginBottom: '1rem' }}>
-            <CarFront size={32} />
+    <div className="login-page-wrapper">
+      {/* Left side brand info (hidden on mobile) */}
+      <div className="login-left-brand">
+        <div className="login-left-header">
+          <div className="logo-circle">
+            <CarFront size={24} />
           </div>
-          <h1 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Shaan Cars CRM</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Login to access your dashboard</p>
+          <span>SHAAN CARS</span>
         </div>
 
-        {errorMsg && (
-          <div style={{ padding: '0.75rem', marginBottom: '1rem', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--accent-danger)', borderRadius: 'var(--radius-md)', fontSize: '0.875rem' }}>
-            {errorMsg}
-          </div>
-        )}
-
-        <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Email Address / Username</label>
-            <div style={{ position: 'relative' }}>
-              <Mail size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-              <input 
-                type="text" 
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                style={{ 
-                  width: '100%', 
-                  padding: '0.75rem 1rem 0.75rem 2.5rem', 
-                  borderRadius: 'var(--radius-md)', 
-                  border: '1px solid var(--border-color)', 
-                  background: 'var(--bg-primary)',
-                  color: 'var(--text-primary)',
-                  outline: 'none'
-                }} 
-                placeholder="employee@shaancars.com" 
-              />
+        <div className="login-left-content">
+          <h1>Precision Control.<br />Peak Performance.</h1>
+          <p>The ultimate enterprise CRM control center managing sales pipelines, employee performance, and inventory logistics across Arena, Nexa, and True Value divisions.</p>
+          
+          <div className="login-stats-grid">
+            <div className="login-stat-card">
+              <div className="num">3</div>
+              <div className="label">Divisions</div>
+            </div>
+            <div className="login-stat-card">
+              <div className="num">24/7</div>
+              <div className="label">Real-time Sync</div>
+            </div>
+            <div className="login-stat-card">
+              <div className="num">100%</div>
+              <div className="label">Security Lock</div>
             </div>
           </div>
+        </div>
 
-          <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Password</label>
-            <div style={{ position: 'relative' }}>
-              <Lock size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-              <input 
-                type="password" 
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                style={{ 
-                  width: '100%', 
-                  padding: '0.75rem 1rem 0.75rem 2.5rem', 
-                  borderRadius: 'var(--radius-md)', 
-                  border: '1px solid var(--border-color)', 
-                  background: 'var(--bg-primary)',
-                  color: 'var(--text-primary)',
-                  outline: 'none'
-                }} 
-                placeholder="••••••••" 
-              />
+        <div style={{ zIndex: 2, fontSize: '0.8rem', color: '#475569', fontWeight: '500' }}>
+          &copy; {new Date().getFullYear()} Shaan Cars Private Limited. All rights reserved.
+        </div>
+      </div>
+
+      {/* Right side form */}
+      <div className="login-right-form">
+        <div className="login-form-box">
+          
+          {/* Mobile Header Branding */}
+          <div className="login-header-mobile">
+            <div className="logo-circle">
+              <CarFront size={28} />
             </div>
+            <h2>Shaan Cars CRM</h2>
+            <p>Sign in to access your portal</p>
           </div>
 
-          <button type="submit" disabled={loading} className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem', padding: '0.875rem' }}>
-            {loading ? 'Authenticating...' : 'Sign In'}
-          </button>
-        </form>
+          <h2 className="login-form-title">Welcome Back</h2>
+          <p className="login-form-subtitle">Enter your enterprise credentials to access the console.</p>
+
+          {errorMsg && (
+            <div style={{ padding: '0.875rem 1rem', marginBottom: '1.5rem', background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', borderRadius: '12px', fontSize: '0.85rem', border: '1px solid rgba(239, 68, 68, 0.2)', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '500' }}>
+              <span style={{ color: '#ef4444', fontWeight: 'bold' }}>⚠️</span>
+              {errorMsg}
+            </div>
+          )}
+
+          <form onSubmit={handleLogin}>
+            <div className="premium-input-group">
+              <label>Email Address / Username</label>
+              <div className="premium-input-wrapper">
+                <Mail size={18} />
+                <input 
+                  type="text" 
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="premium-login-input"
+                  placeholder="employee@shaancars.com" 
+                />
+              </div>
+            </div>
+
+            <div className="premium-input-group" style={{ marginBottom: '2rem' }}>
+              <label>Security Password</label>
+              <div className="premium-input-wrapper">
+                <Lock size={18} />
+                <input 
+                  type="password" 
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="premium-login-input"
+                  placeholder="••••••••" 
+                />
+              </div>
+            </div>
+
+            <button type="submit" disabled={loading} className="premium-submit-btn">
+              {loading ? 'Authenticating Credentials...' : 'Sign In to Dashboard'}
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );

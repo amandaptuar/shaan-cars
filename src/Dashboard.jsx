@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { 
   LayoutDashboard, CarFront, Search, Users, LogOut, UserPlus, 
-  X, Copy, Check, PlusCircle, Trophy, Clock, DollarSign, 
+  X, Copy, Check, PlusCircle, Trophy, Clock, DollarSign, Lock, 
   TrendingUp, Edit, Box, BarChart3, Eye, Calendar, MapPin, Key, Download, Camera, CheckCircle, Wrench, Settings, Mail, Phone, UserCog, RefreshCw, Trash2, Menu
 } from 'lucide-react';
 import { 
@@ -847,6 +847,68 @@ export default function Dashboard() {
                   </div>
                 );
               })()}
+
+              {/* Verified Identity & Profile Details */}
+              {selectedEmployee.profile_completed ? (
+                <div className="glass-card" style={{ background: 'white', border: 'none', padding: '2rem' }}>
+                  <h3 style={{ fontSize: '1.2rem', fontWeight: '800', marginBottom: '1.5rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
+                    <CheckCircle size={20} color="var(--accent-success)" /> Verified Identity & Profile Details
+                  </h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+                    <div>
+                      <div style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Date of Birth</div>
+                      <div style={{ fontWeight: '600', color: 'var(--text-primary)', marginTop: '4px' }}>{selectedEmployee.date_of_birth ? new Date(selectedEmployee.date_of_birth).toLocaleDateString('en-GB') : 'N/A'}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Aadhaar Number</div>
+                      <div style={{ fontWeight: '600', color: 'var(--text-primary)', marginTop: '4px' }}>{selectedEmployee.aadhaar_number || 'N/A'}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Emergency Contact 1</div>
+                      <div style={{ fontWeight: '600', color: 'var(--text-primary)', marginTop: '4px' }}>{selectedEmployee.family_contact_1 || 'N/A'}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Emergency Contact 2</div>
+                      <div style={{ fontWeight: '600', color: 'var(--text-primary)', marginTop: '4px' }}>{selectedEmployee.family_contact_2 || 'N/A'}</div>
+                    </div>
+                    <div style={{ gridColumn: 'span 2' }}>
+                      <div style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Residential Address</div>
+                      <div style={{ fontWeight: '600', color: 'var(--text-primary)', marginTop: '4px' }}>
+                        {selectedEmployee.address || 'N/A'}, {selectedEmployee.district || 'N/A'}, {selectedEmployee.state || 'N/A'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
+                    <div>
+                      <div style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '8px' }}>Aadhaar Card Document</div>
+                      {selectedEmployee.aadhaar_photo_url ? (
+                        <div style={{ border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden', background: 'var(--bg-primary)', display: 'flex', justifyContent: 'center', padding: '10px' }}>
+                          <img src={selectedEmployee.aadhaar_photo_url} alt="Aadhaar Document" style={{ width: '100%', maxHeight: '220px', objectFit: 'contain' }} />
+                        </div>
+                      ) : (
+                        <div style={{ padding: '2rem', border: '2px dashed var(--border-color)', borderRadius: '8px', textAlign: 'center', color: 'var(--text-muted)' }}>No image uploaded</div>
+                      )}
+                    </div>
+
+                    <div>
+                      <div style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-secondary)', marginBottom: '8px' }}>PAN Card Document</div>
+                      {selectedEmployee.pan_photo_url ? (
+                        <div style={{ border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden', background: 'var(--bg-primary)', display: 'flex', justifyContent: 'center', padding: '10px' }}>
+                          <img src={selectedEmployee.pan_photo_url} alt="PAN Document" style={{ width: '100%', maxHeight: '220px', objectFit: 'contain' }} />
+                        </div>
+                      ) : (
+                        <div style={{ padding: '2rem', border: '2px dashed var(--border-color)', borderRadius: '8px', textAlign: 'center', color: 'var(--text-muted)' }}>No image uploaded</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="glass-card" style={{ background: 'white', border: 'none', padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--accent-danger)' }}>
+                  <Lock size={18} />
+                  <span style={{ fontWeight: '600', fontSize: '0.875rem' }}>Pending Profile Setup: This employee has not completed their mandatory profile verification yet.</span>
+                </div>
+              )}
 
               {/* Bottom Section: Graph + Tables */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
