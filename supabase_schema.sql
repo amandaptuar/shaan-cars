@@ -71,6 +71,16 @@ CREATE TABLE mechanics (
     total_points INTEGER DEFAULT 0,
     monthly_target INTEGER DEFAULT 15,
     photo_url TEXT,
+    family_contact_1 VARCHAR(15),
+    family_contact_2 VARCHAR(15),
+    aadhaar_number VARCHAR(20),
+    aadhaar_photo_url TEXT,
+    pan_photo_url TEXT,
+    date_of_birth DATE,
+    address TEXT,
+    state VARCHAR(100),
+    district VARCHAR(100),
+    profile_completed BOOLEAN DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -186,6 +196,18 @@ ALTER PUBLICATION supabase_realtime ADD TABLE point_transactions;
 
 -- MIGRATION FOR EXISTING DB: RUN THIS IN THE SUPABASE SQL EDITOR
 -- ALTER TABLE employees 
+-- ADD COLUMN IF NOT EXISTS family_contact_1 VARCHAR(15),
+-- ADD COLUMN IF NOT EXISTS family_contact_2 VARCHAR(15),
+-- ADD COLUMN IF NOT EXISTS aadhaar_number VARCHAR(20),
+-- ADD COLUMN IF NOT EXISTS aadhaar_photo_url TEXT,
+-- ADD COLUMN IF NOT EXISTS pan_photo_url TEXT,
+-- ADD COLUMN IF NOT EXISTS date_of_birth DATE,
+-- ADD COLUMN IF NOT EXISTS address TEXT,
+-- ADD COLUMN IF NOT EXISTS state VARCHAR(100),
+-- ADD COLUMN IF NOT EXISTS district VARCHAR(100),
+-- ADD COLUMN IF NOT EXISTS profile_completed BOOLEAN DEFAULT false;
+
+-- ALTER TABLE mechanics
 -- ADD COLUMN IF NOT EXISTS family_contact_1 VARCHAR(15),
 -- ADD COLUMN IF NOT EXISTS family_contact_2 VARCHAR(15),
 -- ADD COLUMN IF NOT EXISTS aadhaar_number VARCHAR(20),
