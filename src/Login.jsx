@@ -19,7 +19,7 @@ export default function Login() {
     setErrorMsg('');
     
     // Master Admin Bypass (Testing)
-    if (email === 'admin' && password === 'shaan123') {
+    if (email === 'admin' && password === 'shaan@123') {
       localStorage.setItem('loggedInUser', JSON.stringify({
         id: 'master-admin',
         full_name: 'Shaan Master Admin',
